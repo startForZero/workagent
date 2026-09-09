@@ -1,0 +1,59 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: workagent-server
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/workagent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: 0
+      password: ${REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+  jackson:
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+workagent:
+  workspace-root: ${WORKSPACE_ROOT:./data/workagent/workspace}
+  skill-cache-root: ${SKILL_CACHE_ROOT:./data/workagent/skill-cache}
+  jwt:
+    secret: ${JWT_SECRET:chenxi-workagent-dev-secret-change-me}
+    expire-days: 7
+  security:
+    aes-key: ${AES_KEY:chenxi-workagent-aes-key-0123456}
+  upload:
+    max-size-mb: 20
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket-uploads: workagent-uploads
+    presign-expire-minutes: 30
+  agent:
+    max-iters: 30
+    instance-cache-size: 200
+    default-model-key: dashscope:qwen-plus
+    default-model-api-key: ${DASHSCOPE_API_KEY:}
+  admin:
+    email: ${ADMIN_EMAIL:admin@chenxi.local}
+    password: ${ADMIN_PASSWORD:admin123456}
+    nickname: 管理员
+
+logging:
+  level:
+    com.chenxi.workagent: info

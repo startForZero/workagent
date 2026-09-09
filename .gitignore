@@ -1,0 +1,16 @@
+# ===== 不对外提交的内容 =====
+data/
+docs/
+CLAUDE.md
+
+# ===== 构建产物 =====
+target/
+web/node_modules/
+web/dist/
+
+# ===== 本地环境与日志 =====
+*.log
+.DS_Store
+.idea/
+*.iml
+.vscode/
