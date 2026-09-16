@@ -12,22 +12,25 @@ export interface SseEnvelope<T = unknown> {
 }
 
 /**
- * 终态事件（与后端 SseEventType 契约一致）：收到即视为本次 run 结束。
+ * 终态事件（与后端 SseEventType 契约一致）：收到即视为本次 HTTP 流结束。
  * 不能只等 HTTP 连接关闭——经 dev 代理/反向代理时连接可能被保活挂住，
  * 导致流永远不「读完」、界面卡在生成中状态。
+ * hitl.confirm / hitl.ask_param 也是流终点：run 挂起等待用户操作，后端该次响应自然结束，
+ * 续跑走 resume/answer 新流。
  */
-const TERMINAL_EVENTS: ReadonlySet<string> = new Set(['run.end', 'run.error'])
+const TERMINAL_EVENTS: ReadonlySet<string> = new Set(['run.end', 'run.error', 'hitl.confirm', 'hitl.ask_param'])
 
 /**
- * 发起 run 的 SSE 流（POST + fetch 流式读取；EventSource 不支持 POST/自定义头）。
+ * 通用 SSE 流读取（POST + fetch 流式读取；EventSource 不支持 POST/自定义头）。
  * 收到终态事件后立即返回并释放底层连接。
  */
-export async function streamRun(
-  body: { sessionId: string; message: string; fileIds?: string[]; modelKey?: string },
+async function streamPost(
+  url: string,
+  body: unknown,
   onEvent: (envelope: SseEnvelope) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const resp = await fetch('/api/runs', {
+  const resp = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -72,4 +75,44 @@ export async function streamRun(
   } finally {
     reader.releaseLock()
   }
+}
+
+/** 发起 run 的 SSE 流；skillKeys 为 @ 唤起的技能（收窄本 run 技能目录） */
+export function streamRun(
+  body: { sessionId: string; message: string; fileIds?: string[]; modelKey?: string; skillKeys?: string[] },
+  onEvent: (envelope: SseEnvelope) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  return streamPost('/api/runs', body, onEvent, signal)
+}
+
+/** HITL 确认项（与后端 ConfirmRequest.Confirmation 对应） */
+export interface Confirmation {
+  toolCallId: string
+  approved: boolean
+}
+
+/**
+ * HITL 确认后续跑的 SSE 流：事件追加到当前 assistant 消息，不再有 run.start。
+ */
+export function streamResume(
+  runId: string,
+  confirmations: Confirmation[],
+  onEvent: (envelope: SseEnvelope) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  return streamPost(`/api/runs/${runId}/resume`, { confirmations }, onEvent, signal)
+}
+
+/**
+ * 参数补全提交后续跑的 SSE 流（与后端 AnswerRequest 对应）：values 的 key 对应表单字段 key。
+ */
+export function streamAnswer(
+  runId: string,
+  toolCallId: string,
+  values: Record<string, unknown>,
+  onEvent: (envelope: SseEnvelope) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  return streamPost(`/api/runs/${runId}/answer`, { toolCallId, values }, onEvent, signal)
 }

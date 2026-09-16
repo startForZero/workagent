@@ -9,6 +9,9 @@ import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.StatObjectArgs;
+import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
@@ -64,6 +67,59 @@ public class MinioStorageService {
         } catch (Exception e) {
             log.error("MinIO 下载失败: bucket={}, object={}", bucket, objectName, e);
             throw new BizException(ErrorCode.FILE_NOT_FOUND);
+        }
+    }
+
+    /**
+     * 上传并返回对象 ETag（技能包等需要 ETag 作版本指纹的场景）。
+     */
+    public String putReturningEtag(String bucket, String objectName, InputStream stream,
+                                   long size, String contentType) {
+        try {
+            ensureBucket(bucket);
+            return minioClient.putObject(PutObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(objectName)
+                            .stream(stream, size, -1)
+                            .contentType(contentType)
+                            .build())
+                    .etag();
+        } catch (Exception e) {
+            log.error("MinIO 上传失败: bucket={}, object={}", bucket, objectName, e);
+            throw new BizException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    /**
+     * 删除对象（不存在视为成功——MinIO 删除本身幂等）。
+     */
+    public void remove(String bucket, String objectName) {
+        try {
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(objectName)
+                    .build());
+        } catch (Exception e) {
+            log.error("MinIO 删除失败: bucket={}, object={}", bucket, objectName, e);
+            throw new BizException(ErrorCode.INTERNAL_ERROR, "对象删除失败");
+        }
+    }
+
+    /**
+     * 查询对象 ETag；对象不存在时返回 null。
+     */
+    public String statEtag(String bucket, String objectName) {
+        try {
+            return minioClient.statObject(StatObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(objectName)
+                            .build())
+                    .etag();
+        } catch (ErrorResponseException e) {
+            return null;
+        } catch (Exception e) {
+            log.error("MinIO stat 失败: bucket={}, object={}", bucket, objectName, e);
+            throw new BizException(ErrorCode.INTERNAL_ERROR, "对象状态查询失败");
         }
     }
 

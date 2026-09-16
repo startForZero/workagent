@@ -21,6 +21,8 @@ public class WorkagentProperties {
     private final Minio minio = new Minio();
     private final Agent agent = new Agent();
     private final Admin admin = new Admin();
+    private final Sandbox sandbox = new Sandbox();
+    private final Skill skill = new Skill();
 
     public String getWorkspaceRoot() {
         return workspaceRoot;
@@ -60,6 +62,14 @@ public class WorkagentProperties {
 
     public Admin getAdmin() {
         return admin;
+    }
+
+    public Sandbox getSandbox() {
+        return sandbox;
+    }
+
+    public Skill getSkill() {
+        return skill;
     }
 
     /** 内置管理员种子账号：启动时按邮箱查不到才创建，凭据走环境变量 */
@@ -155,6 +165,10 @@ public class WorkagentProperties {
         private String secretKey = "minioadmin";
         /** 上传附件 bucket */
         private String bucketUploads = "workagent-uploads";
+        /** 沙箱产物 bucket（M2 deliver_artifact 归档） */
+        private String bucketArtifacts = "workagent-artifacts";
+        /** 技能包 bucket（M3 技能市场 zip） */
+        private String bucketSkills = "workagent-skills";
         /** 预签名 URL 过期分钟数 */
         private int presignExpireMinutes = 30;
 
@@ -188,6 +202,22 @@ public class WorkagentProperties {
 
         public void setBucketUploads(String bucketUploads) {
             this.bucketUploads = bucketUploads;
+        }
+
+        public String getBucketArtifacts() {
+            return bucketArtifacts;
+        }
+
+        public void setBucketArtifacts(String bucketArtifacts) {
+            this.bucketArtifacts = bucketArtifacts;
+        }
+
+        public String getBucketSkills() {
+            return bucketSkills;
+        }
+
+        public void setBucketSkills(String bucketSkills) {
+            this.bucketSkills = bucketSkills;
         }
 
         public int getPresignExpireMinutes() {
@@ -240,6 +270,130 @@ public class WorkagentProperties {
 
         public void setDefaultModelApiKey(String defaultModelApiKey) {
             this.defaultModelApiKey = defaultModelApiKey;
+        }
+    }
+
+    /** Docker 沙箱（M2，纯 Docker 方案，每会话一容器） */
+    public static class Sandbox {
+        /** 是否启用沙箱；关闭时退化为宿主机本地文件系统（M1 行为） */
+        private boolean enabled = true;
+        /** 沙箱镜像（需带 python3；框架默认 ubuntu 镜像无 Python） */
+        private String image = "python:3.11-slim";
+        /** CPU 限额（核） */
+        private long cpuCount = 1L;
+        /** 内存限额（字节），默认 512Mi */
+        private long memorySizeBytes = 536870912L;
+        /** 容器网络模式（none=断网，沙箱只跑纯计算，HTTP 走宿主 http_request 工具） */
+        private String network = "none";
+        /** HITL 挂起（确认/参数补全）快照超时（分钟），超时后 resume 视为过期 */
+        private int hitlExpireMinutes = 10;
+        /** Docker 可用性探测缓存（秒），避免每个 run 都执行 docker info */
+        private int dockerProbeCacheSeconds = 60;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getImage() {
+            return image;
+        }
+
+        public void setImage(String image) {
+            this.image = image;
+        }
+
+        public long getCpuCount() {
+            return cpuCount;
+        }
+
+        public void setCpuCount(long cpuCount) {
+            this.cpuCount = cpuCount;
+        }
+
+        public long getMemorySizeBytes() {
+            return memorySizeBytes;
+        }
+
+        public void setMemorySizeBytes(long memorySizeBytes) {
+            this.memorySizeBytes = memorySizeBytes;
+        }
+
+        public String getNetwork() {
+            return network;
+        }
+
+        public void setNetwork(String network) {
+            this.network = network;
+        }
+
+
+
+
+
+
+
+        public int getHitlExpireMinutes() {
+            return hitlExpireMinutes;
+        }
+
+        public void setHitlExpireMinutes(int hitlExpireMinutes) {
+            this.hitlExpireMinutes = hitlExpireMinutes;
+        }
+
+        public int getDockerProbeCacheSeconds() {
+            return dockerProbeCacheSeconds;
+        }
+
+        public void setDockerProbeCacheSeconds(int dockerProbeCacheSeconds) {
+            this.dockerProbeCacheSeconds = dockerProbeCacheSeconds;
+        }
+    }
+
+    /** 技能市场（M3：MinIO 技能包 + 本地缓存） */
+    public static class Skill {
+        /** 技能 zip 包大小上限（MB） */
+        private long maxSizeMb = 10;
+        /** 单个技能包内文件数上限 */
+        private int maxFiles = 100;
+        /** 技能文件内容预览大小上限（KB），超出拒绝读取 */
+        private long previewMaxSizeKb = 256;
+        /** 技能仓库列表缓存 TTL（秒）：getAllSkills 每轮推理都会触发，避免频繁查库 */
+        private int listCacheSeconds = 5;
+
+        public long getMaxSizeMb() {
+            return maxSizeMb;
+        }
+
+        public void setMaxSizeMb(long maxSizeMb) {
+            this.maxSizeMb = maxSizeMb;
+        }
+
+        public int getMaxFiles() {
+            return maxFiles;
+        }
+
+        public void setMaxFiles(int maxFiles) {
+            this.maxFiles = maxFiles;
+        }
+
+        public long getPreviewMaxSizeKb() {
+            return previewMaxSizeKb;
+        }
+
+        public void setPreviewMaxSizeKb(long previewMaxSizeKb) {
+            this.previewMaxSizeKb = previewMaxSizeKb;
+        }
+
+        public int getListCacheSeconds() {
+            return listCacheSeconds;
+        }
+
+        public void setListCacheSeconds(int listCacheSeconds) {
+            this.listCacheSeconds = listCacheSeconds;
         }
     }
 }

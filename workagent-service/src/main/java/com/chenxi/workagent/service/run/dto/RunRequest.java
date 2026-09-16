@@ -12,5 +12,7 @@ public record RunRequest(
         @NotBlank String sessionId,
         @NotBlank @Size(max = 8000) String message,
         List<String> fileIds,
-        @Size(max = 160) String modelKey) {
+        @Size(max = 160) String modelKey,
+        /** @ 唤起的技能 skillKey 列表（可空；收窄本 run 的技能目录为仅选中技能） */
+        List<String> skillKeys) {
 }

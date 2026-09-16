@@ -17,6 +17,8 @@ export interface Profile {
   nickname: string
   avatarUrl?: string
   bio?: string
+  /** USER / ADMIN（技能公共区管理入口判断） */
+  role?: string
 }
 
 export interface ProviderTemplate {
@@ -43,10 +45,11 @@ export interface SessionItem {
   updatedAt: string
 }
 
-/** 历史消息（content 为 JSON 字符串，结构见后端 MessageDO 注释） */
+/** 历史消息（content 为 JSON 字符串，结构见后端 MessageDO 注释；runId 供 HITL 挂起消息 resume） */
 export interface HistoryMessage {
   role: 'user' | 'assistant'
   content: string
+  runId: string
   createdAt: string
 }
 
@@ -55,6 +58,16 @@ export interface UploadedFile {
   filename: string
   size: number
   contentType?: string
+}
+
+/** 沙箱产物（右侧产物面板数据源，与后端 ArtifactResponse 对应） */
+export interface ArtifactItem {
+  id: number
+  fileName: string
+  size: number
+  contentType?: string
+  runId: string
+  createdAt: string
 }
 
 // ---------- API ----------
@@ -88,7 +101,17 @@ export const modelApi = {
 export const sessionApi = {
   create: (title?: string) => http.post<SessionItem>('/api/sessions', { title }),
   list: () => http.get<SessionItem[]>('/api/sessions'),
-  messages: (sessionId: string) => http.get<HistoryMessage[]>(`/api/sessions/${sessionId}/messages`)
+  messages: (sessionId: string) => http.get<HistoryMessage[]>(`/api/sessions/${sessionId}/messages`),
+  remove: (sessionId: string) => http.del<void>(`/api/sessions/${sessionId}`)
+}
+
+export const runApi = {
+  stop: (runId: string) => http.post<void>(`/api/runs/${runId}/stop`)
+}
+
+export const artifactApi = {
+  list: (sessionId: string) => http.get<ArtifactItem[]>(`/api/sessions/${sessionId}/artifacts`),
+  download: (id: number) => http.get<{ url: string }>(`/api/artifacts/${id}/download`)
 }
 
 export const fileApi = {
@@ -97,4 +120,42 @@ export const fileApi = {
     form.append('file', file)
     return http.upload<UploadedFile>('/api/files', form)
   }
+}
+
+// ---------- 技能市场（M3） ----------
+export interface SkillSummary {
+  id: number
+  skillKey: string
+  scope: 'PUBLIC' | 'USER'
+  description: string
+  tags: string[]
+  fileCount: number
+  totalSize: number
+  mine: boolean
+  updatedAt: string
+}
+
+export interface SkillDetail extends Omit<SkillSummary, 'fileCount'> {
+  files: string[]
+}
+
+export const skillApi = {
+  list: (scope?: string, keyword?: string) => {
+    const params = new URLSearchParams()
+    if (scope) params.set('scope', scope)
+    if (keyword) params.set('keyword', keyword)
+    const qs = params.toString()
+    return http.get<SkillSummary[]>(`/api/skills${qs ? `?${qs}` : ''}`)
+  },
+  detail: (id: number) => http.get<SkillDetail>(`/api/skills/${id}`),
+  fileContent: (id: number, path: string) =>
+    http.get<{ path: string; content: string }>(
+      `/api/skills/${id}/files/content?path=${encodeURIComponent(path)}`),
+  importZip: (file: File, scope: 'PUBLIC' | 'USER') => {
+    const form = new FormData()
+    form.append('file', file)
+    return http.upload<SkillSummary>(`/api/skills/import?scope=${scope}`, form)
+  },
+  exportUrl: (id: number) => http.get<{ url: string }>(`/api/skills/${id}/export`),
+  remove: (id: number) => http.del<void>(`/api/skills/${id}`)
 }

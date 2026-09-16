@@ -34,7 +34,9 @@ public class AgentEventSseMapper {
         MAPPING.put(AgentEventType.TOOL_RESULT_DATA_DELTA, SseEventType.TOOL_RESULT);
         MAPPING.put(AgentEventType.TOOL_RESULT_END, SseEventType.TOOL_RESULT);
         MAPPING.put(AgentEventType.REQUIRE_USER_CONFIRM, SseEventType.HITL_CONFIRM);
+        MAPPING.put(AgentEventType.USER_CONFIRM_RESULT, SseEventType.HITL_CONFIRM_RESOLVED);
         MAPPING.put(AgentEventType.REQUIRE_EXTERNAL_EXECUTION, SseEventType.HITL_ASK_PARAM);
+        MAPPING.put(AgentEventType.EXTERNAL_EXECUTION_RESULT, SseEventType.HITL_PARAM_RESOLVED);
         MAPPING.put(AgentEventType.EXCEED_MAX_ITERS, SseEventType.RUN_ERROR);
         MAPPING.put(AgentEventType.AGENT_END, SseEventType.RUN_END);
         MAPPING.put(AgentEventType.AGENT_RESULT, SseEventType.RUN_END);

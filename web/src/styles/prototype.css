@@ -189,13 +189,39 @@ body {
   min-height: 0;
 }
 .conv {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 10px;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
+}
+.conv-title {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.conv-del {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--sub);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.conv:hover .conv-del {
+  opacity: 1;
+}
+.conv-del:hover {
+  background: #e4e4ec;
+  color: var(--red);
 }
 .conv.active {
   background: var(--brand-soft);
@@ -1127,6 +1153,634 @@ body {
   overflow: auto;
   max-height: 240px;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ===== M2 对话区两栏布局（左消息流 + 右产物面板） ===== */
+.chat-layout {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.topbar-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-toggle {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.panel-toggle:hover {
+  background: var(--bg);
+}
+.panel-badge {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 99px;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+/* ===== M2 产物面板 ===== */
+.artifact-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.ap-head {
+  height: 52px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ap-close {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--sub);
+  font-size: 12px;
+}
+.ap-empty {
+  padding: 32px 20px;
+  color: var(--sub);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.8;
+}
+.ap-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.ap-item:hover {
+  background: var(--bg);
+}
+.ap-icon {
+  font-size: 18px;
+}
+.ap-meta {
+  flex: 1;
+  min-width: 0;
+}
+.ap-name {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ap-sub {
+  font-size: 11px;
+  color: var(--sub);
+  margin-top: 2px;
+}
+.ap-dl {
+  color: var(--sub);
+  font-size: 13px;
+}
+.ap-item:hover .ap-dl {
+  color: var(--brand);
+}
+
+/* ===== M2 HITL 风险确认卡 ===== */
+.cf-card {
+  border: 1px solid #f5c58f;
+  background: #fffaf2;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cf-head {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--amber);
+}
+.cf-tool-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.cf-actions {
+  display: flex;
+  gap: 10px;
+}
+.cf-btn {
+  padding: 6px 18px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.cf-btn.allow {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.cf-btn.allow:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.cf-btn.deny:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+.cf-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cf-result {
+  font-size: 12px;
+  font-weight: 500;
+}
+.cf-result.approved {
+  color: #15803d;
+}
+.cf-result.rejected {
+  color: #b91c1c;
+}
+
+/* ===== 参数补全表单卡（M3：ask_user 挂起 → 用户填写 → 提交续跑） ===== */
+.pf-card {
+  border: 1px solid #a5c8ff;
+  background: #f5f9ff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pf-head {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+.pf-question {
+  font-size: 12.5px;
+  color: var(--text-2, #5f7794);
+  line-height: 1.6;
+}
+.pf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pf-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.pf-req {
+  color: #dc2626;
+  font-style: normal;
+  margin-left: 2px;
+}
+.pf-input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  background: var(--panel);
+  color: inherit;
+  outline: none;
+  resize: vertical;
+}
+.pf-input:focus {
+  border-color: var(--brand);
+}
+.pf-input:disabled {
+  background: #f6f7f9;
+  color: #6b7280;
+}
+.pf-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.pf-submit {
+  padding: 6px 18px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+.pf-submit:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.pf-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.pf-result {
+  font-size: 12px;
+  font-weight: 500;
+  color: #15803d;
+}
+
+/* ===== 技能市场（M3，移植自原型 docs/prototype/index.html） ===== */
+.market {
+  padding: 28px 32px;
+  overflow-y: auto;
+  flex: 1;
+}
+.market-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.market-head h2 {
+  font-size: 20px;
+}
+.market-head .search {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  width: 240px;
+  outline: none;
+  background: #fff;
+}
+.upload-btn {
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+.skill-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  transition: 0.15s;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+.skill-card:hover {
+  box-shadow: 0 6px 20px rgba(91, 91, 214, 0.12);
+  transform: translateY(-2px);
+}
+.skill-card .sic {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+.skill-card h3 {
+  font-size: 15px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.skill-card p {
+  font-size: 12px;
+  color: var(--sub);
+  line-height: 1.5;
+  min-height: 36px;
+}
+.skill-meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.tag {
+  display: inline-block;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.ver {
+  font-size: 11px;
+  color: var(--sub);
+  margin-top: 8px;
+}
+.scope-badge {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-weight: 500;
+}
+.scope-badge.pub {
+  background: #eef2ff;
+  color: #4d6bfe;
+}
+.scope-badge.pri {
+  background: #fdf4ff;
+  color: #a21caf;
+}
+.market-empty {
+  color: var(--sub);
+  font-size: 13px;
+  padding: 30px 0;
+}
+
+/* 技能详情页（充满主区域） */
+.sd-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.sd-back {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--sub);
+}
+.sd-back:hover {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+.sd-head .sic {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.sd-title h3 {
+  font-size: 16px;
+}
+.sd-title .sub {
+  font-size: 11px;
+  color: var(--sub);
+  margin-top: 2px;
+  font-family: Menlo, monospace;
+}
+.sd-ops {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.sd-ops button {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--sub);
+}
+.sd-ops button:hover {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+.sd-ops button.danger {
+  color: var(--red);
+}
+.sd-ops button.danger:hover {
+  border-color: var(--red);
+}
+.sd-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  background: var(--panel);
+}
+.fx-tree {
+  width: 250px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 14px 10px;
+  font-size: 13px;
+  background: #fafbfc;
+  flex-shrink: 0;
+}
+.fx-tree .tree-title {
+  font-size: 11px;
+  color: var(--sub);
+  padding: 2px 10px 8px;
+  font-weight: 600;
+}
+.ti {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+}
+.ti:hover {
+  background: #f0f0f7;
+}
+.ti.sel {
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 600;
+}
+.ti .fi {
+  width: 15px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.ti.folder {
+  color: var(--sub);
+  font-weight: 600;
+}
+.ti-children {
+  margin-left: 16px;
+}
+.ti-children.hidden {
+  display: none;
+}
+.fx-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 22px;
+  min-width: 0;
+}
+.fx-path {
+  font-size: 12px;
+  color: var(--sub);
+  font-family: Menlo, monospace;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fx-empty {
+  color: var(--sub);
+  text-align: center;
+  padding: 80px 0;
+  font-size: 13px;
+}
+pre.md-view {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.8;
+  font-family: inherit;
+}
+pre.code-view {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* @ 技能选择器（复用 model-menu 弹层语言） */
+.skill-menu {
+  position: absolute;
+  bottom: 40px;
+  left: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
+  padding: 8px;
+  min-width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 30;
+}
+.skill-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.skill-item:hover {
+  background: #f6f6fb;
+}
+.skill-item .sic {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.skill-item .sn {
+  flex: 1;
+  min-width: 0;
+}
+.skill-item .sn small {
+  display: block;
+  color: var(--sub);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-item .ck {
+  color: var(--brand);
+  font-weight: 600;
+}
+.skill-empty {
+  padding: 14px 12px;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+/* ===== HTML 报告内联预览（RichText 组件） ===== */
+.hp-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 8px 0;
+  background: #fff;
+}
+.hp-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--brand-soft);
+  font-size: 12px;
+  color: var(--sub);
+}
+.hp-spacer {
+  flex: 1;
+}
+.hp-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--brand);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.hp-frame {
+  width: 100%;
+  height: 420px;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+.hp-src {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  background: #f8f8fb;
+  color: var(--text);
   white-space: pre-wrap;
   word-break: break-all;
 }

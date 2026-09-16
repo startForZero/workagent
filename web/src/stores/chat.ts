@@ -36,6 +36,20 @@ export const useChatStore = defineStore('chat', {
     },
     select(sessionId: string) {
       this.currentSessionId = sessionId
+    },
+    /** 删除会话；删的是当前会话则切到剩余第一个，没有剩余则自动建一个新对话 */
+    async remove(sessionId: string) {
+      await sessionApi.remove(sessionId)
+      this.sessions = this.sessions.filter((s) => s.sessionId !== sessionId)
+      if (this.currentSessionId === sessionId) {
+        if (this.sessions.length > 0) {
+          this.currentSessionId = this.sessions[0].sessionId
+        } else {
+          const s = await sessionApi.create()
+          this.sessions = [s]
+          this.currentSessionId = s.sessionId
+        }
+      }
     }
   }
 })

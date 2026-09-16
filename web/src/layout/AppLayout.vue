@@ -11,13 +11,15 @@
           <div v-for="s in group.items" :key="s.sessionId"
                :class="['conv', { active: s.sessionId === chat.currentSessionId }]"
                @click="onSwitch(s.sessionId)">
-            {{ s.title }}
+            <span class="conv-title">{{ s.title }}</span>
+            <span class="conv-del" title="删除会话" @click.stop="onDelete(s)">✕</span>
           </div>
         </template>
       </div>
 
       <div class="nav">
-        <div class="nav-item" @click="toast('技能市场将在 M3 上线')">🧩 技能市场</div>
+        <div :class="['nav-item', { active: route.name === 'skills' || route.name === 'skill-detail' }]"
+             @click="router.push('/skills')">🧩 技能市场</div>
         <div class="nav-item" @click="toast('记忆中心将在 M4 上线')">🧠 记忆中心</div>
         <div :class="['nav-item', { active: route.name === 'settings' }]" @click="router.push('/settings')">
           ⚙️ 设置
@@ -84,5 +86,16 @@ async function onNewChat() {
 function onSwitch(sessionId: string) {
   chat.select(sessionId)
   router.push('/chat')
+}
+
+async function onDelete(s: SessionItem) {
+  if (!window.confirm(`确定删除会话「${s.title}」？消息与产物将一并删除，不可恢复。`)) return
+  try {
+    await chat.remove(s.sessionId)
+    toast('会话已删除')
+    if (route.name !== 'chat') router.push('/chat')
+  } catch (e: any) {
+    toast(e.message ?? '删除失败')
+  }
 }
 </script>

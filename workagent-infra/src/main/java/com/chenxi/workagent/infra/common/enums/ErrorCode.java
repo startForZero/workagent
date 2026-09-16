@@ -27,12 +27,24 @@ public enum ErrorCode {
     SESSION_NOT_FOUND(4001, "会话不存在"),
     RUN_NOT_FOUND(4002, "运行不存在"),
     RUN_STATUS_ILLEGAL(4003, "当前运行状态不允许该操作"),
+    HITL_CONFIRM_EXPIRED(4004, "确认等待已过期，请重新发起任务"),
+    SANDBOX_UNAVAILABLE(4005, "沙箱环境不可用，请启动 Docker 后重试"),
+    PARAM_ANSWER_EXPIRED(4006, "参数填写已过期，请重新发起任务"),
+    SESSION_HAS_ACTIVE_RUN(4007, "会话有正在运行的任务，请先停止或等待完成后再删除"),
+    RUN_MAX_ITERS_EXCEEDED(4008, "已达最大推理步数，请把任务拆细或重新发起"),
 
     // 文件 5xxx
     FILE_TOO_LARGE(5001, "文件超出大小限制"),
     FILE_TYPE_NOT_ALLOWED(5002, "不支持的文件类型"),
     FILE_NOT_FOUND(5003, "文件不存在"),
-    FILE_UPLOAD_FAILED(5004, "文件上传失败");
+    FILE_UPLOAD_FAILED(5004, "文件上传失败"),
+    ARTIFACT_NOT_FOUND(5005, "产物不存在"),
+
+    // 技能 6xxx（M3）
+    SKILL_NOT_FOUND(6001, "技能不存在"),
+    SKILL_IMPORT_INVALID(6002, "技能包格式非法：需为 zip 且含 SKILL.md（frontmatter 带 name/description）"),
+    SKILL_TOO_LARGE(6003, "技能包超出大小限制"),
+    SKILL_FORBIDDEN(6004, "仅管理员可维护公共技能");
 
     private final int code;
     private final String message;

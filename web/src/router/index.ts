@@ -27,6 +27,8 @@ export const router = createRouter({
       children: [
         { path: '', redirect: '/chat' },
         { path: 'chat', name: 'chat', component: () => import('../views/ChatView.vue') },
+        { path: 'skills', name: 'skills', component: () => import('../views/SkillMarketView.vue') },
+        { path: 'skills/:id', name: 'skill-detail', component: () => import('../views/SkillDetailView.vue') },
         { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue') }
       ]
     }

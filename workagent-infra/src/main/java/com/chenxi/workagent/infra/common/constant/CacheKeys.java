@@ -20,4 +20,19 @@ public final class CacheKeys {
     public static String runStatus(String runId) {
         return "wa" + SEP + "run" + SEP + "status" + SEP + runId;
     }
+
+    /** HITL 确认快照（RequireUserConfirmEvent 的 replyId + toolCalls）：wa:run:hitl:{runId} */
+    public static String runHitl(String runId) {
+        return "wa" + SEP + "run" + SEP + "hitl" + SEP + runId;
+    }
+
+    /** 参数补全快照（RequireExternalExecutionEvent 的 replyId + toolCalls）：wa:run:param:{runId} */
+    public static String runParam(String runId) {
+        return "wa" + SEP + "run" + SEP + "param" + SEP + runId;
+    }
+
+    /** @ 唤起技能快照（run 的 skillKeys，续跑时重放 SkillFilter）：wa:run:skills:{runId} */
+    public static String runSkills(String runId) {
+        return "wa" + SEP + "run" + SEP + "skills" + SEP + runId;
+    }
 }

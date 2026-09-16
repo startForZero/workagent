@@ -23,6 +23,11 @@
 | 过程可观测 | 思考 → 工具调用 → 阶段结论的多轮循环聚合为步骤流（WorkBuddy 风格可展开步骤行），转写与回放一致 |
 | 消息持久化 | MySQL `wa_message` 结构化存储（步骤流 JSON），历史会话随时回放 |
 | 文件上传 | MinIO 对象存储，发起运行时自动落地会话工作区供 Agent 读取 |
+| Docker 沙箱 | shell/Python 在容器内执行（每会话一容器、CPU/内存限额、默认断网），工作区 bind mount 投影，宿主机零污染 |
+| HITL 参数补全 | 工具调用全放行（沙箱即安全边界）；任务缺参数时 `ask_user` 挂起弹表单，填答后续跑；快照存 Redis，重启后仍可恢复 |
+| 技能市场 | 公共区（管理员维护）+ 我的技能（用户上传），zip 导入/导出/删除/文件树预览；对话输入区 @ 唤起技能收窄本轮技能目录 |
+| MinIO 技能仓库 | 技能包存 MinIO（`public/`、`users/{uid}/` 分区），运行时按 ETag 判失效拉本地缓存，物化进工作区 `.skills-cache` 供沙箱执行技能脚本 |
+| 产物归档 | Agent 产出文件经 `deliver_artifact` 归档 MinIO，右侧产物面板一键下载（预签名 URL） |
 | 状态外置 | Agent 无状态化，会话状态存 Redis AgentStateStore，多实例下任意节点可续跑 |
 | 配置外置 | 全部可调参数走 `workagent.*` ConfigurationProperties，环境变量可覆盖，密钥类配置强制生产覆盖 |
 
@@ -45,9 +50,9 @@
 └── deploy/docker-compose.yml 依赖中间件（MySQL 8 / Redis 7 / MinIO）
 ```
 
-## 本地启动（M1）
+## 本地启动
 
-前置：JDK 17、Maven 3.9+、Node 18+、Docker。agentscope-java `2.0.3-SNAPSHOT` 需先安装到本地仓库：
+前置：JDK 17、Maven 3.9+、Node 18+、Docker（**M2 沙箱依赖 Docker daemon 运行中**，并提前拉取沙箱镜像 `docker pull python:3.11-slim`；沙箱可用 `workagent.sandbox.enabled=false` 整体关闭退回纯本地执行）。agentscope-java `2.0.3-SNAPSHOT` 需先安装到本地仓库：
 
 ```bash
 cd ../agentscope-java
@@ -98,9 +103,40 @@ cd web && npm run build                # 产物：web/dist
 ## 路线图
 
 - ✅ **M1**：账号体系、BYOK 模型管理、文件上传、SSE 对话闭环、消息持久化与历史回放、过程步骤流展示、内置 http_request 工具
-- ⏳ **M2**：HITL 中断/续跑（人工确认 + 参数补全）、Docker 沙箱执行、产物面板
-- ⏳ **M3**：技能市场 + MinIO 技能仓库
+- ✅ **M2**：Docker 沙箱执行（会话级隔离、资源限额、默认断网）、产物面板（deliver_artifact 归档 MinIO + 预签名下载）
+- ✅ **M3**：技能市场（公共/我的分区、zip 导入导出删除、文件树预览）、MinIO 技能仓库（ETag 缓存 + 沙箱物化）、@ 唤起技能、HITL 参数补全表单（ask_user 挂起 → 填表续跑）
 - ⏳ **M4**：记忆中心（文件式长期记忆）、多模型打磨、观测体系
+
+## 沙箱与 HITL 配置（workagent.sandbox.*）
+
+| 配置 | 默认 | 说明 |
+|---|---|---|
+| enabled | true | 关闭后退化为宿主机本地文件系统 |
+| image | python:3.11-slim | 沙箱镜像（需带 python3），首次使用前请 `docker pull` |
+| cpu-count / memory-size-bytes | 1 / 512Mi | 容器资源限额 |
+| network | none | 默认断网，出网走宿主 `http_request` 工具 |
+| hitl-expire-minutes | 10 | HITL 挂起（参数补全）快照超时，超时后 answer 返回「已过期」 |
+
+**人机交互策略**（2026-09 调整）：工具调用全放行（权限 BYPASS）——文件类操作天然安全，
+execute/shell_execute 跑在断网限额的一次性沙箱里，沙箱即安全边界，不再弹风险确认；
+保留「参数补全」一条 HITL 链路：任务缺必需信息时小梓调用 `ask_user` 挂起，
+前端弹表单收集参数，用户提交后从挂起点继续执行。
+
+## 技能包格式（workagent.skill.*）
+
+技能为一个 zip 包，根目录必须含 `SKILL.md`（YAML frontmatter 带 `name`/`description`，
+`name` 即 skillKey，须匹配 `[a-z0-9][a-z0-9-]*`），其余文件（脚本/模板/参考文档）作为技能资源，
+运行时装入 `<available_skills>` 目录供模型按需 `load_skill_through_path` 加载，
+并物化到工作区 `.skills-cache/`（沙箱内路径 `/workspace/.skills-cache/...`）供脚本执行。
+同名技能重复导入即覆盖更新（ETag 指纹判失效）；用户私有技能遮蔽同名公共技能。
+
+| 配置 | 默认 | 说明 |
+|---|---|---|
+| max-size-mb | 10 | zip 包大小上限 |
+| max-files | 100 | 包内文件数上限 |
+| preview-max-size-kb | 256 | 文件树预览单文件大小上限 |
+| list-cache-seconds | 5 | 技能可见列表内存缓存 TTL |
+| skill-cache-root | ./data/workagent/skill-cache | 本地物化缓存根目录 |
 
 ## 社区与联系
 

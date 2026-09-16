@@ -4,6 +4,8 @@ import com.chenxi.workagent.agent.sse.SseEnvelope;
 import com.chenxi.workagent.infra.common.ApiResult;
 import com.chenxi.workagent.infra.common.constant.SecurityConstants;
 import com.chenxi.workagent.service.run.RunService;
+import com.chenxi.workagent.service.run.dto.AnswerRequest;
+import com.chenxi.workagent.service.run.dto.ConfirmRequest;
 import com.chenxi.workagent.service.run.dto.RunRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,9 +44,31 @@ public class RunController {
 
     @PostMapping("/{runId}/stop")
     public ApiResult<Void> stop(@RequestAttribute(SecurityConstants.ATTR_USER_ID) Long userId,
-                                @PathVariable String runId) {
+                                @PathVariable("runId") String runId) {
         runService.stopRun(userId, runId);
         return ApiResult.ok();
+    }
+
+    /**
+     * HITL 确认后续跑：返回 SSE 流，事件追加到当前 assistant 消息（前端不新建气泡）。
+     */
+    @PostMapping(value = "/{runId}/resume", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> resume(@RequestAttribute(SecurityConstants.ATTR_USER_ID) Long userId,
+                                                @PathVariable("runId") String runId,
+                                                @Valid @RequestBody ConfirmRequest request) {
+        return runService.resume(userId, runId, request)
+                .map(this::toSse);
+    }
+
+    /**
+     * 参数补全提交后续跑：返回 SSE 流，事件追加到当前 assistant 消息。
+     */
+    @PostMapping(value = "/{runId}/answer", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> answer(@RequestAttribute(SecurityConstants.ATTR_USER_ID) Long userId,
+                                                @PathVariable("runId") String runId,
+                                                @Valid @RequestBody AnswerRequest request) {
+        return runService.answerParam(userId, runId, request)
+                .map(this::toSse);
     }
 
     private ServerSentEvent<String> toSse(SseEnvelope envelope) {

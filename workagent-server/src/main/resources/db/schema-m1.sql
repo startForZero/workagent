@@ -84,3 +84,34 @@ CREATE TABLE IF NOT EXISTS wa_message (
     created_at DATETIME    NOT NULL,
     KEY idx_session (session_id)
 ) ENGINE = InnoDB;
+
+-- 沙箱产物（M2：deliver_artifact 归档）
+CREATE TABLE IF NOT EXISTS wa_artifact (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id      BIGINT       NOT NULL,
+    session_id   BIGINT       NOT NULL,
+    run_id       VARCHAR(32)  NOT NULL,
+    file_name    VARCHAR(256) NOT NULL,
+    oss_path     VARCHAR(512) NOT NULL,
+    size         BIGINT       NOT NULL,
+    content_type VARCHAR(128) NULL,
+    created_at   DATETIME     NOT NULL,
+    KEY idx_session (session_id)
+) ENGINE = InnoDB;
+
+-- 技能市场（M3：包体存 MinIO zip，本表存元数据；无版本设计，每技能仅当前一份）
+CREATE TABLE IF NOT EXISTS wa_skill (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    skill_key     VARCHAR(64)  NOT NULL COMMENT '技能标识=SKILL.md frontmatter 的 name（slug）',
+    scope         VARCHAR(16)  NOT NULL COMMENT 'PUBLIC / USER',
+    owner_user_id BIGINT       NULL COMMENT 'USER 技能属主；PUBLIC 为 NULL',
+    description   VARCHAR(512) NOT NULL,
+    tags          VARCHAR(256) NULL COMMENT '逗号分隔',
+    files_json    JSON         NOT NULL COMMENT '包内文件路径列表',
+    total_size    BIGINT       NOT NULL COMMENT 'zip 字节数',
+    etag          VARCHAR(64)  NOT NULL COMMENT 'MinIO 对象 ETag，本地缓存判失效',
+    oss_path      VARCHAR(512) NOT NULL,
+    created_at    DATETIME     NOT NULL,
+    updated_at    DATETIME     NOT NULL,
+    UNIQUE KEY uk_scope_owner_key (scope, owner_user_id, skill_key)
+) ENGINE = InnoDB;
