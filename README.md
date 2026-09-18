@@ -27,6 +27,8 @@
 | HITL 参数补全 | 工具调用全放行（沙箱即安全边界）；任务缺参数时 `ask_user` 挂起弹表单，填答后续跑；快照存 Redis，重启后仍可恢复 |
 | 技能市场 | 公共区（管理员维护）+ 我的技能（用户上传），zip 导入/导出/删除/文件树预览；对话输入区 @ 唤起技能收窄本轮技能目录 |
 | MinIO 技能仓库 | 技能包存 MinIO（`public/`、`users/{uid}/` 分区），运行时按 ETag 判失效拉本地缓存，物化进工作区 `.skills-cache` 供沙箱执行技能脚本 |
+| 长期记忆 | 文件式记忆（MEMORY.md + 每日流水）路由到用户级宿主目录，**跨会话共享**；小梓自动记住稳定偏好与事实，检索/读取走 memory_* 工具 |
+| 记忆中心 | 查看/编辑/删除/一键清空全部长期记忆（MEMORY.md 为真相源，表为 UI 镜像，读时自动对账）；会话记忆 tab 一键跳回历史会话续聊 |
 | 产物归档 | Agent 产出文件经 `deliver_artifact` 归档 MinIO，右侧产物面板一键下载（预签名 URL） |
 | 状态外置 | Agent 无状态化，会话状态存 Redis AgentStateStore，多实例下任意节点可续跑 |
 | 配置外置 | 全部可调参数走 `workagent.*` ConfigurationProperties，环境变量可覆盖，密钥类配置强制生产覆盖 |
@@ -95,6 +97,7 @@ cd web && npm run build                # 产物：web/dist
 | workagent.jwt.secret | JWT_SECRET | 开发默认值，**生产必须覆盖** |
 | workagent.security.aes-key | AES_KEY | 16/24/32 字节，apiKey 加密用，**生产必须覆盖** |
 | workagent.workspace-root | WORKSPACE_ROOT | /data/workagent/workspace |
+| workagent.memory.root | MEMORY_ROOT | ./data/workagent/memory |
 | workagent.minio.endpoint | MINIO_ENDPOINT | http://localhost:9000 |
 | workagent.agent.default-model-api-key | DASHSCOPE_API_KEY | 空（平台兜底模型） |
 | workagent.admin.email | ADMIN_EMAIL | admin@chenxi.local |
@@ -105,7 +108,8 @@ cd web && npm run build                # 产物：web/dist
 - ✅ **M1**：账号体系、BYOK 模型管理、文件上传、SSE 对话闭环、消息持久化与历史回放、过程步骤流展示、内置 http_request 工具
 - ✅ **M2**：Docker 沙箱执行（会话级隔离、资源限额、默认断网）、产物面板（deliver_artifact 归档 MinIO + 预签名下载）
 - ✅ **M3**：技能市场（公共/我的分区、zip 导入导出删除、文件树预览）、MinIO 技能仓库（ETag 缓存 + 沙箱物化）、@ 唤起技能、HITL 参数补全表单（ask_user 挂起 → 填表续跑）
-- ⏳ **M4**：记忆中心（文件式长期记忆）、多模型打磨、观测体系
+- ✅ **M4**：记忆中心（文件式长期记忆跨会话共享、查看/编辑/删除/一键清空、memory_save 自动回填来源会话）
+- ⏳ **M5**：多模型打磨、观测体系
 
 ## 沙箱与 HITL 配置（workagent.sandbox.*）
 
@@ -137,6 +141,27 @@ execute/shell_execute 跑在断网限额的一次性沙箱里，沙箱即安全�
 | preview-max-size-kb | 256 | 文件树预览单文件大小上限 |
 | list-cache-seconds | 5 | 技能可见列表内存缓存 TTL |
 | skill-cache-root | ./data/workagent/skill-cache | 本地物化缓存根目录 |
+
+## 记忆中心（workagent.memory.*）
+
+小梓的长期记忆为**文件式**：`MEMORY.md`（归纳后的长期条目，唯一真相源）+ `memory/YYYY-MM-DD.md`
+（每日流水），经 `filesystemRoute` 路由到用户级宿主目录 `<root>/<userId>/`，跨会话共享；
+会话转录存 `<root>/<userId>/sessions/` 供 `session_search` 跨会话检索。记忆中心页面展示
+`wa_user_memory` 表镜像（读时与 MEMORY.md 自动对账），编辑/删除/清空均为「先改文件后改表」的写穿；
+一键清空不删会话转录（属聊天历史，由会话删除单独管理）。
+
+记忆抽取/归纳（flush/consolidation）默认复用主模型（用户 BYOK key），有少量 token 开销，
+节流与保留策略均可调：
+
+| 配置 | 默认 | 说明 |
+|---|---|---|
+| enabled | true | 关闭后不装配记忆工具与路由 |
+| root | ./data/workagent/memory | 记忆宿主根目录（环境变量 MEMORY_ROOT） |
+| flush-min-gap-minutes | 30 | 记忆抽取节流间隔 |
+| consolidation-min-gap-minutes | 30 | 归纳进 MEMORY.md 的最小间隔 |
+| daily-file-retention-days | 90 | 每日流水保留天数 |
+| session-retention-days | 180 | 会话转录保留天数 |
+| max-entry-length | 1000 | 单条记忆长度上限（对应表 VARCHAR(1024)） |
 
 ## 社区与联系
 
