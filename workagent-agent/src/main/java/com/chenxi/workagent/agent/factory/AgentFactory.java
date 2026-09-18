@@ -14,8 +14,11 @@ import io.agentscope.core.tool.Toolkit;
 import io.agentscope.harness.agent.HarnessAgent;
 import io.agentscope.harness.agent.IsolationScope;
 import io.agentscope.harness.agent.artifact.ArtifactDeliveryTarget;
+import io.agentscope.harness.agent.filesystem.local.LocalFilesystem;
+import io.agentscope.harness.agent.memory.MemoryConfig;
 import io.agentscope.harness.agent.sandbox.impl.docker.DockerFilesystemSpec;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +30,8 @@ import org.springframework.stereotype.Component;
  * 每个 HarnessAgent 均为无状态单例——请求态全部经 RuntimeContext(userId, sessionId) 外置，
  * 因此多实例部署下 resume 可由任意节点处理。
  * M2：装配 Docker 沙箱（SESSION 隔离）、deliver_artifact 产物归档；M3：权限 BYPASS 全放行 + ask_user 参数补全
- * + MinIO 技能仓库（service 模块实现，ObjectProvider 注入打破 Maven 环依赖）。
+ * + MinIO 技能仓库（service 模块实现，ObjectProvider 注入打破 Maven 环依赖）；
+ * M4：文件式长期记忆（MemoryConfig）+ 记忆路径路由到用户级宿主目录（跨会话共享）。
  * @author 辰夕
  */
 @Slf4j
@@ -130,7 +134,52 @@ public class AgentFactory {
         if (skillRepository != null) {
             builder.skillRepository(skillRepository);
         }
+        // M4 记忆中心：文件式长期记忆 + 记忆路径路由到用户级宿主目录（跨会话共享）
+        WorkagentProperties.Memory memory = properties.getMemory();
+        if (memory.isEnabled()) {
+            configureMemory(builder, userId, memory);
+        }
         return builder.build();
+    }
+
+    /**
+     * M4 记忆装配：
+     * <ul>
+     *   <li>记忆路径（MEMORY.md / memory/ 每日流水 / agents/xiaozi/sessions/ 会话转录）经
+     *       filesystemRoute 前缀路由到用户级宿主目录 &lt;memory.root&gt;/&lt;userId&gt;/，
+     *       跨会话共享——沙箱 SESSION 隔离下默认会落 workspace/&lt;sessionId&gt;/ 导致记忆按会话割裂</li>
+     *   <li>⚠️ 不能用 IsolationScope.USER 的 NamespaceFactory 做用户隔离：路由命中后
+     *       backendPath 以 "/" 开头，而 LocalFilesystem.applyNamespacePrefix 跳过绝对路径
+     *       （namespace 会丢失、全用户共享根目录）。因此直接把用户 id 拼进 rootDir，
+     *       virtualMode=true（SANDBOXED）把绝对 backendPath 重锚定到该目录</li>
+     *   <li>三条路由三个后端根：memory/ → 每日流水目录；MEMORY.md → 用户根；
+     *       agents/xiaozi/sessions/ → 会话转录目录（前缀与 .name("xiaozi") 联动，改名需同步）</li>
+     *   <li>沙箱开/关两种模式路由代码相同（框架内部自动包装 Routed/CompositeFilesystem），
+     *       shell_execute 仍走沙箱不受影响</li>
+     * </ul>
+     */
+    private void configureMemory(HarnessAgent.Builder builder, Long userId,
+                                 WorkagentProperties.Memory memory) {
+        Path userRoot = Path.of(memory.getRoot()).toAbsolutePath().normalize()
+                .resolve(String.valueOf(userId));
+        int maxMb = memory.getMaxFileSizeMb();
+        builder.filesystemRoute("MEMORY.md",
+                        new LocalFilesystem(userRoot, true, maxMb, null))
+                .filesystemRoute("memory/",
+                        new LocalFilesystem(userRoot.resolve("memory"), true, maxMb, null));
+        if (memory.isSessionSearchRouteEnabled()) {
+            builder.filesystemRoute("agents/xiaozi/sessions/",
+                    new LocalFilesystem(userRoot.resolve("sessions"), true, maxMb, null));
+        }
+        // model 不配 = 用主模型（用户 BYOK，记忆抽取/归纳费用归用户 key）；
+        // flush 节流：默认 ALWAYS 会在每次调用后都跑一轮 LLM 抽取，开销过大
+        builder.memory(MemoryConfig.builder()
+                .flushTrigger(MemoryConfig.FlushTrigger.throttled(
+                        Duration.ofMinutes(memory.getFlushMinGapMinutes())))
+                .consolidationMinGap(Duration.ofMinutes(memory.getConsolidationMinGapMinutes()))
+                .dailyFileRetentionDays(memory.getDailyFileRetentionDays())
+                .sessionRetentionDays(memory.getSessionRetentionDays())
+                .build());
     }
 
     /**

@@ -115,3 +115,15 @@ CREATE TABLE IF NOT EXISTS wa_skill (
     updated_at    DATETIME     NOT NULL,
     UNIQUE KEY uk_scope_owner_key (scope, owner_user_id, skill_key)
 ) ENGINE = InnoDB;
+
+-- 记忆中心（M4：MEMORY.md 文件为真相源，本表为 UI 镜像 + 来源会话元数据）
+CREATE TABLE IF NOT EXISTS wa_user_memory (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id           BIGINT        NOT NULL,
+    content           VARCHAR(1024) NOT NULL COMMENT '单条记忆全文（bullet 去前缀后）',
+    content_hash      CHAR(64)      NOT NULL COMMENT 'SHA-256(content)，对账与幂等键',
+    source_session_id BIGINT        NULL COMMENT '来源会话 wa_session.id（memory_save 拦截回填；归纳条目为 NULL；会话删除后悬空，不设外键）',
+    created_at        DATETIME      NOT NULL,
+    updated_at        DATETIME      NOT NULL,
+    UNIQUE KEY uk_user_hash (user_id, content_hash)
+) ENGINE = InnoDB;

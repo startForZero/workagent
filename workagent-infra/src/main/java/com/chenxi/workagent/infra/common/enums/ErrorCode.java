@@ -44,7 +44,13 @@ public enum ErrorCode {
     SKILL_NOT_FOUND(6001, "技能不存在"),
     SKILL_IMPORT_INVALID(6002, "技能包格式非法：需为 zip 且含 SKILL.md（frontmatter 带 name/description）"),
     SKILL_TOO_LARGE(6003, "技能包超出大小限制"),
-    SKILL_FORBIDDEN(6004, "仅管理员可维护公共技能");
+    SKILL_FORBIDDEN(6004, "仅管理员可维护公共技能"),
+
+    // 记忆 7xxx（M4）
+    MEMORY_NOT_FOUND(7001, "记忆不存在"),
+    MEMORY_CONTENT_EMPTY(7002, "记忆内容不能为空"),
+    MEMORY_TOO_LONG(7003, "单条记忆超出长度限制"),
+    MEMORY_FILE_ERROR(7004, "记忆文件读写失败，请稍后重试");
 
     private final int code;
     private final String message;

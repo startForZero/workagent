@@ -159,3 +159,22 @@ export const skillApi = {
   exportUrl: (id: number) => http.get<{ url: string }>(`/api/skills/${id}/export`),
   remove: (id: number) => http.del<void>(`/api/skills/${id}`)
 }
+
+// ---------- 记忆中心（M4） ----------
+/** 单条长期记忆（MEMORY.md 的 bullet 条目；sourceSessionTitle 为空表示归纳条目或来源会话已删） */
+export interface MemoryItem {
+  id: number
+  content: string
+  sourceSessionId?: number
+  sourceSessionTitle?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export const memoryApi = {
+  list: () => http.get<MemoryItem[]>('/api/memories'),
+  update: (id: number, content: string) => http.put<void>(`/api/memories/${id}`, { content }),
+  remove: (id: number) => http.del<void>(`/api/memories/${id}`),
+  clearAll: () => http.del<void>('/api/memories')
+}
+

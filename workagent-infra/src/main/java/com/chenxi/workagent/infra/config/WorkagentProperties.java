@@ -23,6 +23,7 @@ public class WorkagentProperties {
     private final Admin admin = new Admin();
     private final Sandbox sandbox = new Sandbox();
     private final Skill skill = new Skill();
+    private final Memory memory = new Memory();
 
     public String getWorkspaceRoot() {
         return workspaceRoot;
@@ -70,6 +71,10 @@ public class WorkagentProperties {
 
     public Skill getSkill() {
         return skill;
+    }
+
+    public Memory getMemory() {
+        return memory;
     }
 
     /** 内置管理员种子账号：启动时按邮箱查不到才创建，凭据走环境变量 */
@@ -394,6 +399,100 @@ public class WorkagentProperties {
 
         public void setListCacheSeconds(int listCacheSeconds) {
             this.listCacheSeconds = listCacheSeconds;
+        }
+    }
+
+    /** 记忆中心（M4：框架文件式长期记忆 + 用户级目录路由） */
+    public static class Memory {
+        /** 是否启用长期记忆；关闭时不装 MemoryConfig 与记忆路由（M1~M3 行为） */
+        private boolean enabled = true;
+        /** 长期记忆宿主根目录，按 userId 命名空间隔离：&lt;root&gt;/&lt;userId&gt;/{MEMORY.md, memory/, agents/...} */
+        private String root = "./data/workagent/memory";
+        /** 记忆文件大小上限（MB），与框架 LocalFilesystem maxFileSizeMb 语义一致 */
+        private int maxFileSizeMb = 10;
+        /** flush 节流间隔（分钟）：首次调用立即执行，之后距上次 flush 不足该间隔则跳过（避免每轮都跑 LLM 抽取） */
+        private int flushMinGapMinutes = 30;
+        /** 归纳最小间隔（分钟，框架默认 30） */
+        private int consolidationMinGapMinutes = 30;
+        /** 每日记忆流水保留天数（框架默认 90） */
+        private int dailyFileRetentionDays = 90;
+        /** 会话转录保留天数（框架默认 180） */
+        private int sessionRetentionDays = 180;
+        /** 是否把 agents/xiaozi/sessions/ 路由到用户级目录（session_search 跨会话可用）；改 agent name 需同步此前缀 */
+        private boolean sessionSearchRouteEnabled = true;
+        /** 单条记忆最大长度（对应 wa_user_memory.content VARCHAR(1024)） */
+        private int maxEntryLength = 1000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getRoot() {
+            return root;
+        }
+
+        public void setRoot(String root) {
+            this.root = root;
+        }
+
+        public int getMaxFileSizeMb() {
+            return maxFileSizeMb;
+        }
+
+        public void setMaxFileSizeMb(int maxFileSizeMb) {
+            this.maxFileSizeMb = maxFileSizeMb;
+        }
+
+        public int getFlushMinGapMinutes() {
+            return flushMinGapMinutes;
+        }
+
+        public void setFlushMinGapMinutes(int flushMinGapMinutes) {
+            this.flushMinGapMinutes = flushMinGapMinutes;
+        }
+
+        public int getConsolidationMinGapMinutes() {
+            return consolidationMinGapMinutes;
+        }
+
+        public void setConsolidationMinGapMinutes(int consolidationMinGapMinutes) {
+            this.consolidationMinGapMinutes = consolidationMinGapMinutes;
+        }
+
+        public int getDailyFileRetentionDays() {
+            return dailyFileRetentionDays;
+        }
+
+        public void setDailyFileRetentionDays(int dailyFileRetentionDays) {
+            this.dailyFileRetentionDays = dailyFileRetentionDays;
+        }
+
+        public int getSessionRetentionDays() {
+            return sessionRetentionDays;
+        }
+
+        public void setSessionRetentionDays(int sessionRetentionDays) {
+            this.sessionRetentionDays = sessionRetentionDays;
+        }
+
+        public boolean isSessionSearchRouteEnabled() {
+            return sessionSearchRouteEnabled;
+        }
+
+        public void setSessionSearchRouteEnabled(boolean sessionSearchRouteEnabled) {
+            this.sessionSearchRouteEnabled = sessionSearchRouteEnabled;
+        }
+
+        public int getMaxEntryLength() {
+            return maxEntryLength;
+        }
+
+        public void setMaxEntryLength(int maxEntryLength) {
+            this.maxEntryLength = maxEntryLength;
         }
     }
 }

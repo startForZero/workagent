@@ -53,6 +53,9 @@ workagent:
     email: ${ADMIN_EMAIL:admin@chenxi.local}
     password: ${ADMIN_PASSWORD:admin123456}
     nickname: 管理员
+  # M4 记忆中心：长期记忆宿主目录（按 userId 隔离）；flush/consolidation 间隔走默认值（30 分钟）
+  memory:
+    root: ${MEMORY_ROOT:./data/workagent/memory}
 
 logging:
   level:

@@ -44,6 +44,7 @@ import { skillApi, type SkillDetail } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { skillBg, skillIcon } from '../utils/skillMeta'
 import { toast } from '../utils/toast'
+import { confirmDialog } from '../utils/confirm'
 
 /** 文件树节点：目录有 children，文件有 path */
 interface TreeNode {
@@ -165,7 +166,7 @@ async function onExport() {
 }
 
 async function onDelete() {
-  if (!window.confirm(`确定删除技能「${detail.value?.skillKey}」？删除后不可恢复。`)) return
+  if (!(await confirmDialog(`确定删除技能「${detail.value?.skillKey}」？删除后不可恢复。`, { title: '删除技能', confirmText: '删除' }))) return
   try {
     await skillApi.remove(skillId)
     toast('技能已删除')

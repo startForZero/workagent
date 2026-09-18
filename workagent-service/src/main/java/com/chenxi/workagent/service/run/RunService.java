@@ -23,6 +23,7 @@ import com.chenxi.workagent.infra.mapper.RunMapper;
 import com.chenxi.workagent.infra.mapper.SessionMapper;
 import com.chenxi.workagent.service.artifact.ArtifactService;
 import com.chenxi.workagent.service.file.FileService;
+import com.chenxi.workagent.service.memory.MemoryService;
 import com.chenxi.workagent.service.model.ModelService;
 import com.chenxi.workagent.service.run.dto.AnswerRequest;
 import com.chenxi.workagent.service.run.dto.ConfirmRequest;
@@ -34,6 +35,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.event.AgentEvent;
+import io.agentscope.core.event.AgentEventType;
 import io.agentscope.core.event.ConfirmResult;
 import io.agentscope.core.event.ExternalExecutionResultEvent;
 import io.agentscope.core.event.RequireExternalExecutionEvent;
@@ -87,6 +89,8 @@ public class RunService {
     private static final int TRANSCRIPT_PAYLOAD_MAX = 600;
     /** resume 时发给 agent 的确认消息文本（实际语义在 metadata 的确认结果里） */
     private static final String CONFIRM_MSG_TEXT = "用户已完成风险操作确认。";
+    /** 框架长期记忆保存工具名（M4 记忆中心拦截回填用） */
+    private static final String TOOL_NAME_MEMORY_SAVE = "memory_save";
 
     private final AgentFactory agentFactory;
     private final AgentEventSseMapper eventMapper;
@@ -102,6 +106,8 @@ public class RunService {
     private final DockerProbe dockerProbe;
     private final SandboxJanitor sandboxJanitor;
     private final WorkagentProperties properties;
+    /** M4 记忆中心：memory_save 成功后回填 wa_user_memory（来源会话） */
+    private final MemoryService memoryService;
 
     /** 活跃 run 的事件通道：ArtifactService 经它把 artifact.created 注入 SSE 流 */
     private final Map<String, RunChannel> runChannels = new ConcurrentHashMap<>();
@@ -322,6 +328,8 @@ public class RunService {
         private String toolCallId;
         private String toolName;
         private final StringBuilder args = new StringBuilder();
+        /** memory_save 专用：完整参数（args 会被截断到 TRANSCRIPT_PAYLOAD_MAX，回填入库需要全文） */
+        private final StringBuilder fullArgs = new StringBuilder();
         private final StringBuilder result = new StringBuilder();
         private String status;
         /** confirm 步骤：挂起的 replyId 与待确认工具列表 */
@@ -503,6 +511,10 @@ public class RunService {
                             SseEnvelope envelope = SseEnvelope.of(type, runId, seq.incrementAndGet(), data);
                             cacheEvent(envelope);
                             accumulate(transcript, event);
+                            // M4 记忆中心：memory_save 成功后回填 wa_user_memory（含来源会话）
+                            if (event.getType() == AgentEventType.TOOL_RESULT_END) {
+                                maybeRecordMemorySave(userId, session.getId(), transcript, event);
+                            }
                             if (event instanceof RequireUserConfirmEvent confirmEvent) {
                                 waitingConfirm.set(true);
                                 onRequireConfirm(run, confirmEvent);
@@ -758,6 +770,25 @@ public class RunService {
      * 工具事件按 toolCallId 聚合为一张卡：START 建卡、DELTA 累积参数、END 美化参数、
      * RESULT 分片累积结果、RESULT_END 置完成；参数分片的 __fragment__ 占位名不产生卡片。
      */
+    /**
+     * M4 记忆中心拦截：memory_save 工具调用成功后，把 content 里的条目写入 wa_user_memory
+     * （带来源会话 id）。transcript 的 args 会被截断到 TRANSCRIPT_PAYLOAD_MAX，故取不截断的 fullArgs。
+     * 任何失败仅记日志，绝不影响对话主流程。
+     */
+    private void maybeRecordMemorySave(Long userId, Long sessionPk, Transcript transcript, AgentEvent event) {
+        try {
+            JsonNode node = objectMapper.valueToTree(event);
+            Step step = transcript.findTool(node.path("toolCallId").asText(""));
+            if (step == null || !TOOL_NAME_MEMORY_SAVE.equals(step.toolName)
+                    || !TOOL_STATUS_DONE.equals(step.status) || step.fullArgs.isEmpty()) {
+                return;
+            }
+            memoryService.recordFromMemorySave(userId, sessionPk, step.fullArgs.toString());
+        } catch (Exception e) {
+            log.warn("memory_save 拦截回填失败（不影响对话）: userId={}, {}", userId, e.getMessage());
+        }
+    }
+
     private void accumulate(Transcript transcript, AgentEvent event) {
         try {
             JsonNode node = objectMapper.valueToTree(event);
@@ -774,7 +805,11 @@ public class RunService {
                 case TOOL_CALL_DELTA -> {
                     Step step = transcript.findTool(node.path("toolCallId").asText(""));
                     if (step != null) {
-                        appendClipped(step.args, node.path("delta").asText(""));
+                        String delta = node.path("delta").asText("");
+                        appendClipped(step.args, delta);
+                        if (TOOL_NAME_MEMORY_SAVE.equals(step.toolName)) {
+                            step.fullArgs.append(delta);
+                        }
                     }
                 }
                 case TOOL_CALL_END -> {

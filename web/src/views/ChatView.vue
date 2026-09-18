@@ -226,7 +226,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { artifactApi, fileApi, modelApi, sessionApi, skillApi, type ArtifactItem, type SkillSummary, type UploadedFile, type UserModel } from '../api'
 import { streamAnswer, streamResume, streamRun, type SseEnvelope } from '../api/sse'
 import { getToken } from '../router'
@@ -320,6 +320,7 @@ interface ChatMessage {
   runId?: string
 }
 
+const route = useRoute()
 const router = useRouter()
 const chat = useChatStore()
 
@@ -371,6 +372,17 @@ onMounted(async () => {
   document.addEventListener('click', closeModelMenu)
   await loadModels()
 })
+
+/** 从记忆中心等入口带 ?session= 跳转：会话列表（AppLayout 异步加载）就绪后选中目标会话 */
+watch(
+  () => [route.query.session, chat.sessions.length] as const,
+  ([target]) => {
+    if (typeof target === 'string' && target && chat.sessions.some((s) => s.sessionId === target)) {
+      chat.select(target)
+    }
+  },
+  { immediate: true }
+)
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeModelMenu)
@@ -1021,15 +1033,27 @@ function prettyJson(raw: string): string {
   }
 }
 
-/** 工具行参数摘要：优先取 JSON 首个字符串值（如 command），否则用原文单行截断 */
+/** 工具行参数摘要：记忆工具取语义化字段，其余优先 JSON 首个字符串值（如 command），否则原文单行截断 */
 function toolBrief(s: Step): string {
   const raw = s.args.trim()
   if (!raw) return ''
   let brief = raw
   try {
     const obj = JSON.parse(raw) as Record<string, unknown>
-    const first = Object.values(obj).find((v) => typeof v === 'string')
-    if (typeof first === 'string') brief = first
+    if (s.name === 'memory_save' && typeof obj.content === 'string') {
+      // 取 content 首个 bullet（去 -/* 前缀）
+      brief = obj.content
+        .split('\n')
+        .map((l) => l.replace(/^[-*]\s*/, '').trim())
+        .find((l) => l) ?? obj.content
+    } else if ((s.name === 'memory_search' || s.name === 'session_search') && typeof obj.query === 'string') {
+      brief = obj.query
+    } else if (s.name === 'memory_get' && typeof obj.path === 'string') {
+      brief = obj.path
+    } else {
+      const first = Object.values(obj).find((v) => typeof v === 'string')
+      if (typeof first === 'string') brief = first
+    }
   } catch {
     // 参数分片未完整，用原文
   }

@@ -29,6 +29,7 @@ export const router = createRouter({
         { path: 'chat', name: 'chat', component: () => import('../views/ChatView.vue') },
         { path: 'skills', name: 'skills', component: () => import('../views/SkillMarketView.vue') },
         { path: 'skills/:id', name: 'skill-detail', component: () => import('../views/SkillDetailView.vue') },
+        { path: 'memory', name: 'memory', component: () => import('../views/MemoryCenterView.vue') },
         { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue') }
       ]
     }

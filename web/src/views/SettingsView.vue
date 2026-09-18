@@ -124,6 +124,7 @@ import { modelApi, userApi, type UserModel } from '../api'
 import { PROVIDERS, providerMeta } from '../constants/providers'
 import { useAuthStore } from '../stores/auth'
 import { toast } from '../utils/toast'
+import { confirmDialog } from '../utils/confirm'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -183,8 +184,8 @@ async function changePwd() {
   }
 }
 
-function logout() {
-  if (window.confirm('确定退出登录吗？')) auth.logout()
+async function logout() {
+  if (await confirmDialog('确定退出登录吗？', { title: '退出登录', danger: false })) auth.logout()
 }
 
 // ---------- 模型管理 ----------
@@ -243,7 +244,7 @@ async function toggle(m: UserModel) {
 }
 
 async function removeModel(m: UserModel) {
-  if (!window.confirm(`确认删除模型「${providerMeta(m.provider).name} · ${m.model}」？使用该模型的会话将不可用。`)) return
+  if (!(await confirmDialog(`确认删除模型「${providerMeta(m.provider).name} · ${m.model}」？使用该模型的会话将不可用。`, { title: '删除模型', confirmText: '删除' }))) return
   try {
     await modelApi.remove(m.id)
     await loadModels()

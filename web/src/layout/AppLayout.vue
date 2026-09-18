@@ -20,7 +20,9 @@
       <div class="nav">
         <div :class="['nav-item', { active: route.name === 'skills' || route.name === 'skill-detail' }]"
              @click="router.push('/skills')">🧩 技能市场</div>
-        <div class="nav-item" @click="toast('记忆中心将在 M4 上线')">🧠 记忆中心</div>
+        <div :class="['nav-item', { active: route.name === 'memory' }]" @click="router.push('/memory')">
+          🧠 记忆中心
+        </div>
         <div :class="['nav-item', { active: route.name === 'settings' }]" @click="router.push('/settings')">
           ⚙️ 设置
         </div>
@@ -45,6 +47,7 @@ import type { SessionItem } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { useChatStore } from '../stores/chat'
 import { toast } from '../utils/toast'
+import { confirmDialog } from '../utils/confirm'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,7 +92,7 @@ function onSwitch(sessionId: string) {
 }
 
 async function onDelete(s: SessionItem) {
-  if (!window.confirm(`确定删除会话「${s.title}」？消息与产物将一并删除，不可恢复。`)) return
+  if (!(await confirmDialog(`确定删除会话「${s.title}」？消息与产物将一并删除，不可恢复。`, { title: '删除会话', confirmText: '删除' }))) return
   try {
     await chat.remove(s.sessionId)
     toast('会话已删除')

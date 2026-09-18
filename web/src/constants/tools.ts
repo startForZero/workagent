@@ -10,7 +10,8 @@ const TOOL_LABELS: Record<string, string> = {
   shell_execute: '运行命令',
   memory_save: '保存记忆',
   memory_search: '搜索记忆',
-  memory_get: '读取记忆'
+  memory_get: '读取记忆',
+  session_search: '搜索会话记忆'
 }
 
 export function toolLabel(name: string): string {
